@@ -13,6 +13,10 @@ struct LiveCaptionView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(model.lines, id: \.self) { line in
                         VStack(alignment: .leading, spacing: 4) {
+                            Text(line.speaker)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
                             Text(line.original)
                                 .font(.body)
 
@@ -25,10 +29,9 @@ struct LiveCaptionView: View {
                     }
                 }
             }
-
-            Button("Generate Mock Caption") {
-                model.generateMockCaption()
-            }
+        }
+        .task {
+            model.startStreaming()
         }
     }
 }
