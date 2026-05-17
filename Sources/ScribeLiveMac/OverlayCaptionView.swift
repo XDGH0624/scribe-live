@@ -4,7 +4,7 @@ struct OverlayCaptionView: View {
     let latestLine: CaptionLine?
 
     var body: some View {
-        VStack(alignment: .center, spacing: 6) {
+        VStack(alignment: .center, spacing: 8) {
             if let latestLine {
                 Text(latestLine.speaker)
                     .font(.caption)
@@ -13,12 +13,17 @@ struct OverlayCaptionView: View {
                 Text(latestLine.original)
                     .font(.title3)
                     .multilineTextAlignment(.center)
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.82)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if !latestLine.translated.isEmpty {
                     Text(latestLine.translated)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Text("Scribe Live")
@@ -29,8 +34,8 @@ struct OverlayCaptionView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
-        .frame(minWidth: 420, minHeight: 96)
+        .padding(18)
+        .frame(width: 680, alignment: .center)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(radius: 12)
