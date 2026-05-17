@@ -4,6 +4,7 @@ import ScribeCore
 enum RuntimeAudioSource: String, CaseIterable, Identifiable {
     case microphone = "Microphone"
     case systemAudio = "System Audio"
+    case mixed = "Mixed"
 
     var id: String { rawValue }
 
@@ -13,6 +14,8 @@ enum RuntimeAudioSource: String, CaseIterable, Identifiable {
             return .microphone
         case .systemAudio:
             return .systemAudio
+        case .mixed:
+            return .mixed
         }
     }
 }
