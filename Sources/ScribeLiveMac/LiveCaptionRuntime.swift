@@ -39,6 +39,9 @@ final class LiveCaptionRuntime: ObservableObject {
 
         case .systemAudio:
             await startSystemAudioMode()
+
+        case .mixed:
+            await startMixedMode()
         }
     }
 
@@ -94,6 +97,53 @@ final class LiveCaptionRuntime: ObservableObject {
             )
         } catch {
             statusMessage = "Failed to start system audio"
+            isRunning = false
+        }
+    }
+
+    private func startMixedMode() async {
+        guard permissions.microphoneAuthorized else {
+            statusMessage = "Microphone permission denied"
+            return
+        }
+
+        guard #available(macOS 13.0, *) else {
+            statusMessage = "Mixed mode requires macOS 13"
+            return
+        }
+
+        let microphone = MicrophoneInputSource()
+        let systemAudio = SystemAudioInputSource()
+
+        self.microphone = microphone
+        self.systemAudio = systemAudio
+
+        do {
+            statusMessage = "Starting mixed mode"
+
+            try await microphone.start()
+            try await systemAudio.start()
+
+            isRunning = true
+            statusMessage = "Listening to microphone and system audio"
+
+            bindTranscriptStream(
+                recognizer.transcribe(
+                    sessionID: sessionID,
+                    source: .microphone,
+                    audioStream: microphone.audioStream
+                )
+            )
+
+            bindTranscriptStream(
+                recognizer.transcribe(
+                    sessionID: sessionID,
+                    source: .systemAudio,
+                    audioStream: systemAudio.audioStream
+                )
+            )
+        } catch {
+            statusMessage = "Failed to start mixed mode"
             isRunning = false
         }
     }
