@@ -3,6 +3,7 @@ import SwiftUI
 import ScribeCore
 import AudioInput
 import SpeechPipeline
+import TranslationPipeline
 import Notes
 
 @MainActor
@@ -18,6 +19,8 @@ final class LiveCaptionRuntime: ObservableObject {
     private let overlayController = OverlayWindowController()
     private let sessionStore = TranscriptSessionStore()
     private let summaryGenerator = LocalSummaryGenerator()
+    private let captionFormatter = CaptionTextFormatter()
+    private let translator = MockTranslator()
 
     private var microphone: MicrophoneInputSource?
 
@@ -30,18 +33,14 @@ final class LiveCaptionRuntime: ObservableObject {
     private var lastRenderedTextBySource: [AudioSource: String] = [:]
 
     func start() async {
-        guard !isRunning else {
-            return
-        }
+        guard !isRunning else { return }
 
         activeSummary = nil
         lines.removeAll()
         currentLineIDs.removeAll()
         lastRenderedTextBySource.removeAll()
 
-        let session = await sessionStore.createSession(
-            title: "Live Caption Session"
-        )
+        let session = await sessionStore.createSession(title: "Live Caption Session")
         activeSession = session
         sessionID = session.id
 
@@ -56,10 +55,8 @@ final class LiveCaptionRuntime: ObservableObject {
         switch selectedSource {
         case .microphone:
             await startMicrophoneMode()
-
         case .systemAudio:
             await startSystemAudioMode()
-
         case .mixed:
             await startMixedMode()
         }
@@ -79,14 +76,7 @@ final class LiveCaptionRuntime: ObservableObject {
             try await microphone.start()
             isRunning = true
             statusMessage = "Listening to microphone"
-
-            bindTranscriptStream(
-                recognizer.transcribe(
-                    sessionID: sessionID,
-                    source: .microphone,
-                    audioStream: microphone.audioStream
-                )
-            )
+            bindTranscriptStream(recognizer.transcribe(sessionID: sessionID, source: .microphone, audioStream: microphone.audioStream))
         } catch {
             statusMessage = "Failed to start microphone"
             isRunning = false
@@ -107,14 +97,7 @@ final class LiveCaptionRuntime: ObservableObject {
             try await systemAudio.start()
             isRunning = true
             statusMessage = "Listening to system audio"
-
-            bindTranscriptStream(
-                recognizer.transcribe(
-                    sessionID: sessionID,
-                    source: .systemAudio,
-                    audioStream: systemAudio.audioStream
-                )
-            )
+            bindTranscriptStream(recognizer.transcribe(sessionID: sessionID, source: .systemAudio, audioStream: systemAudio.audioStream))
         } catch {
             statusMessage = "Failed to start system audio"
             isRunning = false
@@ -134,34 +117,17 @@ final class LiveCaptionRuntime: ObservableObject {
 
         let microphone = MicrophoneInputSource()
         let systemAudio = SystemAudioInputSource()
-
         self.microphone = microphone
         self.systemAudio = systemAudio
 
         do {
             statusMessage = "Starting mixed mode"
-
             try await microphone.start()
             try await systemAudio.start()
-
             isRunning = true
             statusMessage = "Listening to microphone and system audio"
-
-            bindTranscriptStream(
-                recognizer.transcribe(
-                    sessionID: sessionID,
-                    source: .microphone,
-                    audioStream: microphone.audioStream
-                )
-            )
-
-            bindTranscriptStream(
-                recognizer.transcribe(
-                    sessionID: sessionID,
-                    source: .systemAudio,
-                    audioStream: systemAudio.audioStream
-                )
-            )
+            bindTranscriptStream(recognizer.transcribe(sessionID: sessionID, source: .microphone, audioStream: microphone.audioStream))
+            bindTranscriptStream(recognizer.transcribe(sessionID: sessionID, source: .systemAudio, audioStream: systemAudio.audioStream))
         } catch {
             statusMessage = "Failed to start mixed mode"
             isRunning = false
@@ -169,9 +135,7 @@ final class LiveCaptionRuntime: ObservableObject {
     }
 
     func stop() async {
-        guard isRunning else {
-            return
-        }
+        guard isRunning else { return }
 
         await microphone?.stop()
         microphone = nil
@@ -196,9 +160,7 @@ final class LiveCaptionRuntime: ObservableObject {
         await sessionStore.allSessions()
     }
 
-    private func bindTranscriptStream(
-        _ stream: AsyncStream<TranscriptSegment>
-    ) {
+    private func bindTranscriptStream(_ stream: AsyncStream<TranscriptSegment>) {
         Task { [weak self] in
             for await segment in stream {
                 await self?.append(segment: segment)
@@ -211,27 +173,22 @@ final class LiveCaptionRuntime: ObservableObject {
         activeSession = await sessionStore.allSessions().first { $0.id == sessionID }
 
         let speaker = speakerLabel(for: segment.source)
-        let cleanedText = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let readableText = captionFormatter.readableCaption(from: segment.text)
+        guard !readableText.isEmpty else { return }
+        guard lastRenderedTextBySource[segment.source] != readableText else { return }
+        lastRenderedTextBySource[segment.source] = readableText
 
-        guard !cleanedText.isEmpty else {
-            return
+        let translatedText: String
+        do {
+            translatedText = try await translator.convert(text: readableText, sourceLanguage: nil, targetLanguage: "zh-Hans")
+        } catch {
+            translatedText = ""
         }
-
-        guard lastRenderedTextBySource[segment.source] != cleanedText else {
-            return
-        }
-
-        lastRenderedTextBySource[segment.source] = cleanedText
 
         let lineID = currentLineIDs[segment.source] ?? UUID()
         currentLineIDs[segment.source] = lineID
 
-        let line = CaptionLine(
-            id: lineID,
-            original: cleanedText,
-            translated: segment.translatedText ?? "",
-            speaker: speaker
-        )
+        let line = CaptionLine(id: lineID, original: readableText, translated: translatedText, speaker: speaker)
 
         if let index = lines.firstIndex(where: { $0.id == lineID }) {
             lines[index] = line
@@ -244,14 +201,9 @@ final class LiveCaptionRuntime: ObservableObject {
 
     private func speakerLabel(for source: AudioSource) -> String {
         switch source {
-        case .microphone:
-            return "Microphone"
-
-        case .systemAudio:
-            return "System Audio"
-
-        case .mixed:
-            return "Mixed"
+        case .microphone: return "Microphone"
+        case .systemAudio: return "System Audio"
+        case .mixed: return "Mixed"
         }
     }
 }
