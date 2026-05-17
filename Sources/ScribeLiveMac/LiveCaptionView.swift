@@ -150,8 +150,9 @@ private extension View {
     func withAppleTranslationSession(runtime: LiveCaptionRuntime) -> some View {
 #if canImport(Translation)
         if #available(macOS 15.0, *) {
-            self.translationTask(runtime.translationService.appleConfiguration) { session in
-                runtime.translationService.installAppleTranslator(session: session)
+            self.translationTask(runtime.translationService.appleConfiguration) { _ in
+                // Keep the Translation modifier guarded behind macOS 15 availability
+                // without retaining or calling TranslationSession from Swift 6 code.
             }
         } else {
             self
