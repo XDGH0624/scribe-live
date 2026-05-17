@@ -11,11 +11,13 @@ final class LiveCaptionRuntime: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var statusMessage = "Ready"
     @Published private(set) var activeSession: TranscriptSession?
+    @Published private(set) var activeSummary: SessionSummary?
     @Published var selectedSource: RuntimeAudioSource = .microphone
 
     private let permissions = PermissionManager()
     private let overlayController = OverlayWindowController()
     private let sessionStore = TranscriptSessionStore()
+    private let summaryGenerator = LocalSummaryGenerator()
 
     private var microphone: MicrophoneInputSource?
 
@@ -29,6 +31,9 @@ final class LiveCaptionRuntime: ObservableObject {
         guard !isRunning else {
             return
         }
+
+        activeSummary = nil
+        lines.removeAll()
 
         let session = await sessionStore.createSession(
             title: "Live Caption Session"
@@ -173,7 +178,11 @@ final class LiveCaptionRuntime: ObservableObject {
         }
 
         overlayController.hideOverlay()
-        activeSession = await sessionStore.allSessions().first { $0.id == sessionID }
+
+        if let session = await sessionStore.allSessions().first(where: { $0.id == sessionID }) {
+            activeSession = session
+            activeSummary = summaryGenerator.generate(from: session)
+        }
 
         isRunning = false
         statusMessage = "Stopped"
