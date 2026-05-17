@@ -1,0 +1,42 @@
+name: ScribeLive
+options:
+  bundleIdPrefix: com.xdgh
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  ScribeLivePackage:
+    path: .
+targets:
+  ScribeLiveMac:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Apps/ScribeLiveMac
+    dependencies:
+      - package: ScribeLivePackage
+        product: ScribeCore
+      - package: ScribeLivePackage
+        product: AudioInput
+      - package: ScribeLivePackage
+        product: SpeechPipeline
+      - package: ScribeLivePackage
+        product: TranslationPipeline
+      - package: ScribeLivePackage
+        product: LiveCaptionOverlay
+      - package: ScribeLivePackage
+        product: Notes
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.xdgh.scribelive
+        PRODUCT_NAME: Scribe Live
+        INFOPLIST_FILE: Apps/ScribeLiveMac/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Apps/ScribeLiveMac/ScribeLiveMac.entitlements
+        SWIFT_VERSION: 6.0
+        MACOSX_DEPLOYMENT_TARGET: 14.0
+        ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
