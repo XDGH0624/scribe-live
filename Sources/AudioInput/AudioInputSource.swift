@@ -19,7 +19,7 @@ public protocol AudioInputSource: Sendable {
     func stop() async
 }
 
-public actor MockMicrophoneInputSource: AudioInputSource {
+public final class MockMicrophoneInputSource: AudioInputSource, @unchecked Sendable {
     public let sourceType: AudioSource = .microphone
 
     private let stream: AsyncStream<AudioBuffer>
