@@ -16,6 +16,12 @@ public struct MockTranslator: Translator {
         sourceLanguage: String?,
         targetLanguage: String
     ) async throws -> String {
-        return "Converted: " + text
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return ""
+        }
+
+        // Placeholder translation until a real local/API translator is connected.
+        // The prefix makes it clear that the translation pipeline is active.
+        return "译文占位: " + text
     }
 }
