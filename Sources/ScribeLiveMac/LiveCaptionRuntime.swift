@@ -26,6 +26,8 @@ final class LiveCaptionRuntime: ObservableObject {
 
     private let recognizer = AppleSpeechRecognizer()
     private var sessionID = UUID()
+    private var currentLineIDs: [AudioSource: UUID] = [:]
+    private var lastRenderedTextBySource: [AudioSource: String] = [:]
 
     func start() async {
         guard !isRunning else {
@@ -34,6 +36,8 @@ final class LiveCaptionRuntime: ObservableObject {
 
         activeSummary = nil
         lines.removeAll()
+        currentLineIDs.removeAll()
+        lastRenderedTextBySource.removeAll()
 
         let session = await sessionStore.createSession(
             title: "Live Caption Session"
@@ -206,26 +210,48 @@ final class LiveCaptionRuntime: ObservableObject {
         await sessionStore.append(segment: segment, to: sessionID)
         activeSession = await sessionStore.allSessions().first { $0.id == sessionID }
 
-        let speaker: String
+        let speaker = speakerLabel(for: segment.source)
+        let cleanedText = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        switch segment.source {
-        case .microphone:
-            speaker = "Microphone"
-
-        case .systemAudio:
-            speaker = "System Audio"
-
-        case .mixed:
-            speaker = "Mixed"
+        guard !cleanedText.isEmpty else {
+            return
         }
 
+        guard lastRenderedTextBySource[segment.source] != cleanedText else {
+            return
+        }
+
+        lastRenderedTextBySource[segment.source] = cleanedText
+
+        let lineID = currentLineIDs[segment.source] ?? UUID()
+        currentLineIDs[segment.source] = lineID
+
         let line = CaptionLine(
-            original: segment.text,
+            id: lineID,
+            original: cleanedText,
             translated: segment.translatedText ?? "",
             speaker: speaker
         )
 
-        lines.append(line)
+        if let index = lines.firstIndex(where: { $0.id == lineID }) {
+            lines[index] = line
+        } else {
+            lines.append(line)
+        }
+
         overlayController.showOverlay(with: line)
+    }
+
+    private func speakerLabel(for source: AudioSource) -> String {
+        switch source {
+        case .microphone:
+            return "Microphone"
+
+        case .systemAudio:
+            return "System Audio"
+
+        case .mixed:
+            return "Mixed"
+        }
     }
 }
