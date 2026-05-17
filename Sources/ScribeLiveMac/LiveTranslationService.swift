@@ -8,11 +8,10 @@ import Translation
 @MainActor
 final class LiveTranslationService: ObservableObject {
     @Published var allowsNetworkFallback = false
-    @Published private(set) var latestOriginalText = ""
-    @Published private(set) var latestAppleTranslatedText = ""
 
     private var sourceLanguageIdentifier = "en"
     private var targetLanguageIdentifier = "zh-Hans"
+    private var appleTranslator: ((String) async throws -> String)?
 
 #if canImport(Translation)
     private var configurationStorage: Any?
@@ -24,8 +23,7 @@ final class LiveTranslationService: ObservableObject {
     ) {
         self.sourceLanguageIdentifier = sourceLanguageIdentifier
         self.targetLanguageIdentifier = targetLanguageIdentifier
-        latestOriginalText = ""
-        latestAppleTranslatedText = ""
+        appleTranslator = nil
 
 #if canImport(Translation)
         if #available(macOS 15.0, *) {
@@ -46,9 +44,11 @@ final class LiveTranslationService: ObservableObject {
     }
 
     @available(macOS 15.0, *)
-    func publishAppleTranslation(original: String, translated: String) {
-        latestOriginalText = original
-        latestAppleTranslatedText = translated
+    func installAppleTranslator(session: TranslationSession) {
+        appleTranslator = { text in
+            let response = try await session.translate(text)
+            return response.targetText
+        }
     }
 #endif
 
@@ -58,13 +58,12 @@ final class LiveTranslationService: ObservableObject {
             return ""
         }
 
-#if canImport(Translation)
-        if #available(macOS 15.0, *),
-           trimmed == latestOriginalText,
-           !latestAppleTranslatedText.isEmpty {
-            return latestAppleTranslatedText
+        if let appleTranslator {
+            let translated = try await appleTranslator(trimmed)
+            if !translated.isEmpty {
+                return translated
+            }
         }
-#endif
 
         guard allowsNetworkFallback else {
             return ""
