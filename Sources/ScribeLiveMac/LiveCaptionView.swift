@@ -8,6 +8,12 @@ struct LiveCaptionView: View {
     @StateObject private var runtime = LiveCaptionRuntime()
 
     var body: some View {
+        content
+            .padding()
+            .withAppleTranslationSession(runtime: runtime)
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
             sourcePicker
@@ -15,22 +21,7 @@ struct LiveCaptionView: View {
             captionArea
             controls
         }
-        .padding()
-#if canImport(Translation)
-        .translationTask(translationConfiguration) { session in
-            if #available(macOS 15.0, *) {
-                runtime.translationService.handleSession(session)
-            }
-        }
-#endif
     }
-
-#if canImport(Translation)
-    @available(macOS 15.0, *)
-    private var translationConfiguration: TranslationSession.Configuration? {
-        runtime.translationService.configuration
-    }
-#endif
 
     private var header: some View {
         HStack {
@@ -151,5 +142,22 @@ private struct CaptionRowView: View {
         .padding(12)
         .background(.thinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func withAppleTranslationSession(runtime: LiveCaptionRuntime) -> some View {
+#if canImport(Translation)
+        if #available(macOS 15.0, *) {
+            self.translationTask(runtime.translationService.appleConfiguration) { session in
+                runtime.translationService.handleSession(session)
+            }
+        } else {
+            self
+        }
+#else
+        self
+#endif
     }
 }
