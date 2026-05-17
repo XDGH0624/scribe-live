@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if canImport(Translation)
+import Translation
+#endif
+
 struct LiveCaptionView: View {
     @StateObject private var runtime = LiveCaptionRuntime()
 
@@ -7,11 +11,26 @@ struct LiveCaptionView: View {
         VStack(alignment: .leading, spacing: 16) {
             header
             sourcePicker
+            translationSettings
             captionArea
             controls
         }
         .padding()
+#if canImport(Translation)
+        .translationTask(translationConfiguration) { session in
+            if #available(macOS 15.0, *) {
+                runtime.translationService.handleSession(session)
+            }
+        }
+#endif
     }
+
+#if canImport(Translation)
+    @available(macOS 15.0, *)
+    private var translationConfiguration: TranslationSession.Configuration? {
+        runtime.translationService.configuration
+    }
+#endif
 
     private var header: some View {
         HStack {
@@ -39,6 +58,13 @@ struct LiveCaptionView: View {
         .pickerStyle(.segmented)
         .frame(maxWidth: 560)
         .disabled(runtime.isRunning)
+    }
+
+    private var translationSettings: some View {
+        Toggle("Allow network translation fallback", isOn: $runtime.translationService.allowsNetworkFallback)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .toggleStyle(.checkbox)
     }
 
     private var captionArea: some View {
