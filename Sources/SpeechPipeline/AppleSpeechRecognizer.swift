@@ -1,9 +1,12 @@
 import Foundation
 import Speech
+import AVFoundation
 import ScribeCore
 import AudioInput
 
 public final class AppleSpeechRecognizer: SpeechRecognizer {
+    private var recognitionTask: SFSpeechRecognitionTask?
+
     public init() {}
 
     public func transcribe(
@@ -14,33 +17,41 @@ public final class AppleSpeechRecognizer: SpeechRecognizer {
 
         AsyncStream { continuation in
             Task {
-                let recognizer = SFSpeechRecognizer()
-                let request = SFSpeechAudioBufferRecognitionRequest()
-
-                guard recognizer != nil else {
+                guard let recognizer = SFSpeechRecognizer() else {
                     continuation.finish()
                     return
                 }
 
-                for await buffer in audioStream {
-                    let pcmBuffer = Self.makePCMBuffer(from: buffer.samples)
+                let request = SFSpeechAudioBufferRecognitionRequest()
+                request.shouldReportPartialResults = true
 
-                    if let pcmBuffer {
-                        request.append(pcmBuffer)
+                self.recognitionTask = recognizer.recognitionTask(with: request) {
+                    result, error in
+
+                    if let result {
+                        continuation.yield(
+                            TranscriptSegment(
+                                sessionID: sessionID,
+                                source: source,
+                                startTime: 0,
+                                endTime: 0,
+                                text: result.bestTranscription.formattedString,
+                                translatedText: nil,
+                                speakerID: nil,
+                                confidence: nil
+                            )
+                        )
                     }
 
-                    continuation.yield(
-                        TranscriptSegment(
-                            sessionID: sessionID,
-                            source: source,
-                            startTime: 0,
-                            endTime: 0,
-                            text: "Streaming speech recognition placeholder",
-                            translatedText: nil,
-                            speakerID: nil,
-                            confidence: nil
-                        )
-                    )
+                    if error != nil {
+                        continuation.finish()
+                    }
+                }
+
+                for await buffer in audioStream {
+                    if let pcmBuffer = Self.makePCMBuffer(from: buffer.samples) {
+                        request.append(pcmBuffer)
+                    }
                 }
 
                 request.endAudio()
