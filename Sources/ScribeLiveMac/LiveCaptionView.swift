@@ -151,7 +151,7 @@ private extension View {
 #if canImport(Translation)
         if #available(macOS 15.0, *) {
             self.translationTask(runtime.translationService.appleConfiguration) { session in
-                runtime.translationService.handleSession(session)
+                runtime.translationService.installAppleTranslator(session: session)
             }
         } else {
             self
