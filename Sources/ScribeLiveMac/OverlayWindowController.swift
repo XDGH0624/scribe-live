@@ -1,4 +1,6 @@
 import SwiftUI
+
+#if os(macOS)
 import AppKit
 
 @MainActor
@@ -19,6 +21,7 @@ final class OverlayWindowController {
         )
 
         panel.contentView = hostingView
+        panel.setContentSize(NSSize(width: 680, height: 220))
         panel.orderFrontRegardless()
     }
 
@@ -27,8 +30,14 @@ final class OverlayWindowController {
     }
 
     private func createPanel() {
+        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
+        let width: CGFloat = 680
+        let height: CGFloat = 220
+        let x = visibleFrame.midX - width / 2
+        let y = visibleFrame.maxY - height - 24
+
         let panel = NSPanel(
-            contentRect: NSRect(x: 300, y: 700, width: 520, height: 140),
+            contentRect: NSRect(x: x, y: y, width: width, height: height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -47,3 +56,13 @@ final class OverlayWindowController {
         self.panel = panel
     }
 }
+
+#else
+
+@MainActor
+final class OverlayWindowController {
+    func showOverlay(with latestLine: CaptionLine?) {}
+    func hideOverlay() {}
+}
+
+#endif
