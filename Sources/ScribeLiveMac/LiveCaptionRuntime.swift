@@ -3,16 +3,19 @@ import SwiftUI
 import ScribeCore
 import AudioInput
 import SpeechPipeline
+import Notes
 
 @MainActor
 final class LiveCaptionRuntime: ObservableObject {
     @Published private(set) var lines: [CaptionLine] = []
     @Published private(set) var isRunning = false
     @Published private(set) var statusMessage = "Ready"
+    @Published private(set) var activeSession: TranscriptSession?
     @Published var selectedSource: RuntimeAudioSource = .microphone
 
     private let permissions = PermissionManager()
     private let overlayController = OverlayWindowController()
+    private let sessionStore = TranscriptSessionStore()
 
     private var microphone: MicrophoneInputSource?
 
@@ -20,12 +23,18 @@ final class LiveCaptionRuntime: ObservableObject {
     private var systemAudio: SystemAudioInputSource?
 
     private let recognizer = AppleSpeechRecognizer()
-    private let sessionID = UUID()
+    private var sessionID = UUID()
 
     func start() async {
         guard !isRunning else {
             return
         }
+
+        let session = await sessionStore.createSession(
+            title: "Live Caption Session"
+        )
+        activeSession = session
+        sessionID = session.id
 
         statusMessage = "Requesting permissions"
         await permissions.requestAll()
@@ -164,9 +173,14 @@ final class LiveCaptionRuntime: ObservableObject {
         }
 
         overlayController.hideOverlay()
+        activeSession = await sessionStore.allSessions().first { $0.id == sessionID }
 
         isRunning = false
         statusMessage = "Stopped"
+    }
+
+    func sessions() async -> [TranscriptSession] {
+        await sessionStore.allSessions()
     }
 
     private func bindTranscriptStream(
@@ -179,7 +193,10 @@ final class LiveCaptionRuntime: ObservableObject {
         }
     }
 
-    private func append(segment: TranscriptSegment) {
+    private func append(segment: TranscriptSegment) async {
+        await sessionStore.append(segment: segment, to: sessionID)
+        activeSession = await sessionStore.allSessions().first { $0.id == sessionID }
+
         let speaker: String
 
         switch segment.source {
