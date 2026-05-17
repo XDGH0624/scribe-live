@@ -12,6 +12,8 @@ final class LiveCaptionRuntime: ObservableObject {
     @Published var selectedSource: RuntimeAudioSource = .microphone
 
     private let permissions = PermissionManager()
+    private let overlayController = OverlayWindowController()
+
     private var microphone: MicrophoneInputSource?
 
     @available(macOS 13.0, *)
@@ -161,6 +163,8 @@ final class LiveCaptionRuntime: ObservableObject {
             systemAudio = nil
         }
 
+        overlayController.hideOverlay()
+
         isRunning = false
         statusMessage = "Stopped"
     }
@@ -196,5 +200,6 @@ final class LiveCaptionRuntime: ObservableObject {
         )
 
         lines.append(line)
+        overlayController.showOverlay(with: line)
     }
 }
