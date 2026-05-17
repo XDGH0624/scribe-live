@@ -6,6 +6,7 @@ import AudioInput
 
 public final class AppleSpeechRecognizer: SpeechRecognizer {
     private var recognitionTask: SFSpeechRecognitionTask?
+    private var stabilizer = TranscriptStabilizer()
 
     public init() {}
 
@@ -29,18 +30,16 @@ public final class AppleSpeechRecognizer: SpeechRecognizer {
                     result, error in
 
                     if let result {
-                        continuation.yield(
-                            TranscriptSegment(
-                                sessionID: sessionID,
-                                source: source,
-                                startTime: 0,
-                                endTime: 0,
-                                text: result.bestTranscription.formattedString,
-                                translatedText: nil,
-                                speakerID: nil,
-                                confidence: nil
-                            )
-                        )
+                        let text = result.bestTranscription.formattedString
+
+                        if let segment = self.stabilizer.process(
+                            text: text,
+                            sessionID: sessionID,
+                            source: source,
+                            isFinal: result.isFinal
+                        ) {
+                            continuation.yield(segment)
+                        }
                     }
 
                     if error != nil {
