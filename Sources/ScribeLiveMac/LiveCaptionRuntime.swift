@@ -3,7 +3,6 @@ import SwiftUI
 import ScribeCore
 import AudioInput
 import SpeechPipeline
-import TranslationPipeline
 import Notes
 
 @MainActor
@@ -15,12 +14,13 @@ final class LiveCaptionRuntime: ObservableObject {
     @Published private(set) var activeSummary: SessionSummary?
     @Published var selectedSource: RuntimeAudioSource = .microphone
 
+    let translationService = LiveTranslationService()
+
     private let permissions = PermissionManager()
     private let overlayController = OverlayWindowController()
     private let sessionStore = TranscriptSessionStore()
     private let summaryGenerator = LocalSummaryGenerator()
     private let captionFormatter = CaptionTextFormatter()
-    private let translator = MockTranslator()
 
     private var microphone: MicrophoneInputSource?
 
@@ -32,6 +32,13 @@ final class LiveCaptionRuntime: ObservableObject {
     private var currentLineIDs: [AudioSource: UUID] = [:]
     private var lastRenderedTextBySource: [AudioSource: String] = [:]
 
+    init() {
+        translationService.configure(
+            sourceLanguageIdentifier: "en",
+            targetLanguageIdentifier: "zh-Hans"
+        )
+    }
+
     func start() async {
         guard !isRunning else { return }
 
@@ -39,6 +46,11 @@ final class LiveCaptionRuntime: ObservableObject {
         lines.removeAll()
         currentLineIDs.removeAll()
         lastRenderedTextBySource.removeAll()
+
+        translationService.configure(
+            sourceLanguageIdentifier: "en",
+            targetLanguageIdentifier: "zh-Hans"
+        )
 
         let session = await sessionStore.createSession(title: "Live Caption Session")
         activeSession = session
@@ -178,13 +190,7 @@ final class LiveCaptionRuntime: ObservableObject {
         guard lastRenderedTextBySource[segment.source] != readableText else { return }
         lastRenderedTextBySource[segment.source] = readableText
 
-        let translatedText: String
-        do {
-            translatedText = try await translator.convert(text: readableText, sourceLanguage: nil, targetLanguage: "zh-Hans")
-        } catch {
-            translatedText = ""
-        }
-
+        let translatedText = (try? await translationService.translate(readableText)) ?? ""
         let lineID = currentLineIDs[segment.source] ?? UUID()
         currentLineIDs[segment.source] = lineID
 
