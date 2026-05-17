@@ -6,7 +6,7 @@ public protocol SpeechRecognizer: Sendable {
     func transcribe(
         sessionID: UUID,
         source: AudioSource,
-        audioStream: AsyncStream<AudioBuffer>
+        audioStream: AsyncStream<AudioInput.AudioBuffer>
     ) -> AsyncStream<TranscriptSegment>
 }
 
@@ -16,7 +16,7 @@ public struct MockSpeechRecognizer: SpeechRecognizer {
     public func transcribe(
         sessionID: UUID,
         source: AudioSource,
-        audioStream: AsyncStream<AudioBuffer>
+        audioStream: AsyncStream<AudioInput.AudioBuffer>
     ) -> AsyncStream<TranscriptSegment> {
 
         AsyncStream { continuation in
