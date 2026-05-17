@@ -5,44 +5,17 @@ import SwiftUI
 import Translation
 #endif
 
-#if canImport(Translation)
-@available(macOS 15.0, *)
-@MainActor
-private final class AppleTranslationBridge {
-    var configuration: TranslationSession.Configuration?
-    private var session: TranslationSession?
-
-    init(sourceLanguageIdentifier: String, targetLanguageIdentifier: String) {
-        configuration = TranslationSession.Configuration(
-            source: Locale.Language(identifier: sourceLanguageIdentifier),
-            target: Locale.Language(identifier: targetLanguageIdentifier)
-        )
-    }
-
-    func handleSession(_ session: TranslationSession) {
-        self.session = session
-    }
-
-    func translate(_ text: String) async throws -> String? {
-        guard let session else {
-            return nil
-        }
-
-        let response = try await session.translate(text)
-        return response.targetText
-    }
-}
-#endif
-
 @MainActor
 final class LiveTranslationService: ObservableObject {
     @Published var allowsNetworkFallback = false
+    @Published private(set) var latestOriginalText = ""
+    @Published private(set) var latestAppleTranslatedText = ""
 
     private var sourceLanguageIdentifier = "en"
     private var targetLanguageIdentifier = "zh-Hans"
 
 #if canImport(Translation)
-    private var appleBridge: AnyObject?
+    private var configurationStorage: Any?
 #endif
 
     func configure(
@@ -51,15 +24,17 @@ final class LiveTranslationService: ObservableObject {
     ) {
         self.sourceLanguageIdentifier = sourceLanguageIdentifier
         self.targetLanguageIdentifier = targetLanguageIdentifier
+        latestOriginalText = ""
+        latestAppleTranslatedText = ""
 
 #if canImport(Translation)
         if #available(macOS 15.0, *) {
-            appleBridge = AppleTranslationBridge(
-                sourceLanguageIdentifier: sourceLanguageIdentifier,
-                targetLanguageIdentifier: targetLanguageIdentifier
+            configurationStorage = TranslationSession.Configuration(
+                source: Locale.Language(identifier: sourceLanguageIdentifier),
+                target: Locale.Language(identifier: targetLanguageIdentifier)
             )
         } else {
-            appleBridge = nil
+            configurationStorage = nil
         }
 #endif
     }
@@ -67,12 +42,13 @@ final class LiveTranslationService: ObservableObject {
 #if canImport(Translation)
     @available(macOS 15.0, *)
     var appleConfiguration: TranslationSession.Configuration? {
-        (appleBridge as? AppleTranslationBridge)?.configuration
+        configurationStorage as? TranslationSession.Configuration
     }
 
     @available(macOS 15.0, *)
-    func handleSession(_ session: TranslationSession) {
-        (appleBridge as? AppleTranslationBridge)?.handleSession(session)
+    func publishAppleTranslation(original: String, translated: String) {
+        latestOriginalText = original
+        latestAppleTranslatedText = translated
     }
 #endif
 
@@ -84,9 +60,9 @@ final class LiveTranslationService: ObservableObject {
 
 #if canImport(Translation)
         if #available(macOS 15.0, *),
-           let translated = try await (appleBridge as? AppleTranslationBridge)?.translate(trimmed),
-           !translated.isEmpty {
-            return translated
+           trimmed == latestOriginalText,
+           !latestAppleTranslatedText.isEmpty {
+            return latestAppleTranslatedText
         }
 #endif
 
