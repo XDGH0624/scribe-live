@@ -50,6 +50,19 @@ struct LiveCaptionView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
                 } else {
+                    HStack(spacing: 12) {
+                        Text("Original")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text("Translation")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal, 12)
+
                     ForEach(runtime.lines) { line in
                         CaptionRowView(line: line)
                     }
@@ -57,7 +70,7 @@ struct LiveCaptionView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(minHeight: 260)
+        .frame(minHeight: 320)
     }
 
     private var controls: some View {
@@ -86,22 +99,26 @@ private struct CaptionRowView: View {
     let line: CaptionLine
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(line.speaker)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Text(line.original)
-                .font(.body)
-                .lineLimit(4)
-                .textSelection(.enabled)
-
-            if !line.translated.isEmpty {
-                Text(line.translated)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
+            HStack(alignment: .top, spacing: 12) {
+                Text(line.original)
+                    .font(.body)
+                    .lineLimit(5)
                     .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Divider()
+
+                Text(line.translated.isEmpty ? "Translation pending" : line.translated)
+                    .font(.body)
+                    .foregroundStyle(line.translated.isEmpty ? .secondary : .primary)
+                    .lineLimit(5)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
