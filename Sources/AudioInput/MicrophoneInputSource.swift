@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 import ScribeCore
 
-public actor MicrophoneInputSource: AudioInputSource {
+public final class MicrophoneInputSource: AudioInputSource, @unchecked Sendable {
     public let sourceType: AudioSource = .microphone
 
     private let engine = AVAudioEngine()
