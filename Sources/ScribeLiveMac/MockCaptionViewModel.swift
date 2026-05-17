@@ -2,10 +2,23 @@ import Foundation
 import SwiftUI
 import ScribeCore
 
-struct CaptionLine: Hashable {
-    let original: String
-    let translated: String
-    let speaker: String
+struct CaptionLine: Identifiable, Hashable {
+    let id: UUID
+    var original: String
+    var translated: String
+    var speaker: String
+
+    init(
+        id: UUID = UUID(),
+        original: String,
+        translated: String,
+        speaker: String
+    ) {
+        self.id = id
+        self.original = original
+        self.translated = translated
+        self.speaker = speaker
+    }
 }
 
 @MainActor
