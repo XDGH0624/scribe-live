@@ -8,11 +8,14 @@ final class PermissionManager: ObservableObject {
     @Published private(set) var speechAuthorized = false
 
     func requestAll() async {
-        microphoneAuthorized = await requestMicrophonePermission()
-        speechAuthorized = await requestSpeechPermission()
+        async let microphone = Self.requestMicrophonePermission()
+        async let speech = Self.requestSpeechPermission()
+
+        microphoneAuthorized = await microphone
+        speechAuthorized = await speech
     }
 
-    private func requestMicrophonePermission() async -> Bool {
+    private nonisolated static func requestMicrophonePermission() async -> Bool {
         await withCheckedContinuation { continuation in
             AVCaptureDevice.requestAccess(for: .audio) { granted in
                 continuation.resume(returning: granted)
@@ -20,7 +23,7 @@ final class PermissionManager: ObservableObject {
         }
     }
 
-    private func requestSpeechPermission() async -> Bool {
+    private nonisolated static func requestSpeechPermission() async -> Bool {
         await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status == .authorized)
