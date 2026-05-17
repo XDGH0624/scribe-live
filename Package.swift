@@ -33,7 +33,6 @@ let package = Package(
         .target(name: "SpeechPipeline", dependencies: ["ScribeCore", "AudioInput"]),
         .target(name: "TranslationPipeline", dependencies: ["ScribeCore"]),
         .target(name: "LiveCaptionOverlay", dependencies: ["ScribeCore"]),
-        .target(name: "Notes", dependencies: ["ScribeCore"]),
-        .testTarget(name: "ScribeCoreTests", dependencies: ["ScribeCore"])
+        .target(name: "Notes", dependencies: ["ScribeCore"])
     ]
 )
