@@ -17,6 +17,14 @@ struct LiveCaptionView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Picker("Audio Source", selection: $runtime.selectedSource) {
+                ForEach(RuntimeAudioSource.allCases) { source in
+                    Text(source.rawValue)
+                        .tag(source)
+                }
+            }
+            .pickerStyle(.segmented)
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(runtime.lines, id: \.self) { line in
