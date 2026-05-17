@@ -13,8 +13,7 @@ final class LiveCaptionRuntime: ObservableObject {
     @Published private(set) var activeSession: TranscriptSession?
     @Published private(set) var activeSummary: SessionSummary?
     @Published var selectedSource: RuntimeAudioSource = .microphone
-
-    let translationService = LiveTranslationService()
+    @Published var translationService = LiveTranslationService()
 
     private let permissions = PermissionManager()
     private let overlayController = OverlayWindowController()
