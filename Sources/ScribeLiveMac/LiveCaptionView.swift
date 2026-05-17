@@ -1,17 +1,25 @@
 import SwiftUI
 
 struct LiveCaptionView: View {
-    @StateObject private var model = MockCaptionViewModel()
+    @StateObject private var runtime = LiveCaptionRuntime()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Live Captions")
-                .font(.title2)
-                .bold()
+            HStack {
+                Text("Live Captions")
+                    .font(.title2)
+                    .bold()
+
+                Spacer()
+
+                Text(runtime.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(model.lines, id: \.self) { line in
+                    ForEach(runtime.lines, id: \.self) { line in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(line.speaker)
                                 .font(.caption)
@@ -20,18 +28,33 @@ struct LiveCaptionView: View {
                             Text(line.original)
                                 .font(.body)
 
-                            Text(line.translated)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if !line.translated.isEmpty {
+                                Text(line.translated)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(8)
                     }
                 }
             }
-        }
-        .task {
-            model.startStreaming()
+
+            HStack {
+                Button("Start") {
+                    Task {
+                        await runtime.start()
+                    }
+                }
+                .disabled(runtime.isRunning)
+
+                Button("Stop") {
+                    Task {
+                        await runtime.stop()
+                    }
+                }
+                .disabled(!runtime.isRunning)
+            }
         }
     }
 }
