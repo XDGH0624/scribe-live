@@ -4,16 +4,15 @@ import AVFoundation
 import ScribeCore
 import AudioInput
 
-public final class AppleSpeechRecognizer: SpeechRecognizer {
+public final class AppleSpeechRecognizer: SpeechRecognizer, @unchecked Sendable {
     private var recognitionTask: SFSpeechRecognitionTask?
-    private var stabilizer = TranscriptStabilizer()
 
     public init() {}
 
     public func transcribe(
         sessionID: UUID,
         source: AudioSource,
-        audioStream: AsyncStream<AudioBuffer>
+        audioStream: AsyncStream<AudioInput.AudioBuffer>
     ) -> AsyncStream<TranscriptSegment> {
 
         AsyncStream { continuation in
@@ -22,6 +21,8 @@ public final class AppleSpeechRecognizer: SpeechRecognizer {
                     continuation.finish()
                     return
                 }
+
+                var stabilizer = TranscriptStabilizer()
 
                 let request = SFSpeechAudioBufferRecognitionRequest()
                 request.shouldReportPartialResults = true
@@ -32,7 +33,7 @@ public final class AppleSpeechRecognizer: SpeechRecognizer {
                     if let result {
                         let text = result.bestTranscription.formattedString
 
-                        if let segment = self.stabilizer.process(
+                        if let segment = stabilizer.process(
                             text: text,
                             sessionID: sessionID,
                             source: source,
