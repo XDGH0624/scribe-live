@@ -11,7 +11,6 @@ final class LiveTranslationService: ObservableObject {
 
     private var sourceLanguageIdentifier = "en"
     private var targetLanguageIdentifier = "zh-Hans"
-    private var appleTranslator: ((String) async throws -> String)?
 
 #if canImport(Translation)
     private var configurationStorage: Any?
@@ -23,7 +22,6 @@ final class LiveTranslationService: ObservableObject {
     ) {
         self.sourceLanguageIdentifier = sourceLanguageIdentifier
         self.targetLanguageIdentifier = targetLanguageIdentifier
-        appleTranslator = nil
 
 #if canImport(Translation)
         if #available(macOS 15.0, *) {
@@ -42,27 +40,12 @@ final class LiveTranslationService: ObservableObject {
     var appleConfiguration: TranslationSession.Configuration? {
         configurationStorage as? TranslationSession.Configuration
     }
-
-    @available(macOS 15.0, *)
-    func installAppleTranslator(session: TranslationSession) {
-        appleTranslator = { text in
-            let response = try await session.translate(text)
-            return response.targetText
-        }
-    }
 #endif
 
     func translate(_ text: String) async throws -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return ""
-        }
-
-        if let appleTranslator {
-            let translated = try await appleTranslator(trimmed)
-            if !translated.isEmpty {
-                return translated
-            }
         }
 
         guard allowsNetworkFallback else {
