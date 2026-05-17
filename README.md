@@ -11,6 +11,48 @@ The goal is one app with three modes:
 2. **Live Caption Mode**: system audio -> real-time captions -> optional translation -> saved transcript.
 3. **Meeting Mode**: microphone + system audio -> live captions -> post-session cleanup -> summary and export.
 
+## Running the macOS app
+
+This repository now supports generating a full macOS `.app` project using XcodeGen.
+
+### Requirements
+
+- macOS 14+
+- Xcode 16+
+- XcodeGen
+
+Install XcodeGen:
+
+```bash
+brew install xcodegen
+```
+
+Generate the Xcode project:
+
+```bash
+xcodegen generate
+```
+
+Open the generated project:
+
+```bash
+open ScribeLive.xcodeproj
+```
+
+In Xcode:
+
+- Select `ScribeLiveMac`
+- Choose `My Mac`
+- Press `Cmd + R`
+
+The generated app bundle includes:
+
+- microphone permission descriptions
+- speech recognition permission descriptions
+- screen capture permission descriptions
+- bundle identifier configuration
+- app entitlements
+
 ## Why this exists
 
 Most caption tools are temporary: once the meeting or video ends, the text disappears. Most transcription tools are post-hoc: they do not help while you are listening. Scribe Live aims to connect both workflows:
@@ -19,13 +61,19 @@ Most caption tools are temporary: once the meeting or video ends, the text disap
 
 ## Current status
 
-This repository is in the planning and architecture phase. The first implementation target is a minimal macOS prototype that can:
+This repository is evolving from a Swift Package prototype into a full macOS application.
 
-- represent microphone and system audio sources behind one protocol;
-- emit transcript segments from a speech pipeline;
-- display live captions through an overlay module;
-- persist transcript segments into a session model;
-- prepare the codebase for later integration with Swift Scribe and OST code.
+Implemented foundations include:
+
+- microphone capture
+- system audio capture skeleton
+- streaming speech recognition
+- transcript stabilization
+- floating overlay captions
+- transcript persistence
+- searchable history
+- AI summaries
+- semantic retrieval foundations
 
 ## Proposed architecture
 
@@ -41,13 +89,15 @@ Sources/
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [Integration plan](docs/integration-plan.md)
-- [Roadmap](docs/roadmap.md)
+- Architecture: docs/architecture.md
+- Integration plan: docs/integration-plan.md
+- Roadmap: docs/roadmap.md
+- System audio notes: docs/system-audio-notes.md
+- Mock pipeline: docs/mock-pipeline.md
 
 ## Development direction
 
-The project should prefer modular interfaces before importing large blocks of upstream code. OST capabilities should enter through `SystemAudioInputSource` and `FloatingSubtitleOverlay`. Swift Scribe capabilities should enter through notes, persistence, post-session transcription, speaker diarization, and summarization.
+The project should prefer modular interfaces before importing large blocks of upstream code. OST capabilities should enter through `SystemAudioInputSource` and `FloatingSubtitleOverlay`. Swift Scribe capabilities should enter through notes, persistence, post-session transcription, speaker diarization, summarization, and semantic retrieval.
 
 ## License
 
