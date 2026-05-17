@@ -9,9 +9,14 @@ final class LiveCaptionRuntime: ObservableObject {
     @Published private(set) var lines: [CaptionLine] = []
     @Published private(set) var isRunning = false
     @Published private(set) var statusMessage = "Ready"
+    @Published var selectedSource: RuntimeAudioSource = .microphone
 
     private let permissions = PermissionManager()
     private var microphone: MicrophoneInputSource?
+
+    @available(macOS 13.0, *)
+    private var systemAudio: SystemAudioInputSource?
+
     private let recognizer = AppleSpeechRecognizer()
     private let sessionID = UUID()
 
@@ -23,13 +28,23 @@ final class LiveCaptionRuntime: ObservableObject {
         statusMessage = "Requesting permissions"
         await permissions.requestAll()
 
-        guard permissions.microphoneAuthorized else {
-            statusMessage = "Microphone permission denied"
+        guard permissions.speechAuthorized else {
+            statusMessage = "Speech recognition permission denied"
             return
         }
 
-        guard permissions.speechAuthorized else {
-            statusMessage = "Speech recognition permission denied"
+        switch selectedSource {
+        case .microphone:
+            await startMicrophoneMode()
+
+        case .systemAudio:
+            await startSystemAudioMode()
+        }
+    }
+
+    private func startMicrophoneMode() async {
+        guard permissions.microphoneAuthorized else {
+            statusMessage = "Microphone permission denied"
             return
         }
 
@@ -40,21 +55,45 @@ final class LiveCaptionRuntime: ObservableObject {
             statusMessage = "Starting microphone"
             try await microphone.start()
             isRunning = true
-            statusMessage = "Listening"
+            statusMessage = "Listening to microphone"
 
-            let transcriptStream = recognizer.transcribe(
-                sessionID: sessionID,
-                source: .microphone,
-                audioStream: microphone.audioStream
+            bindTranscriptStream(
+                recognizer.transcribe(
+                    sessionID: sessionID,
+                    source: .microphone,
+                    audioStream: microphone.audioStream
+                )
             )
-
-            Task { [weak self] in
-                for await segment in transcriptStream {
-                    await self?.append(segment: segment)
-                }
-            }
         } catch {
             statusMessage = "Failed to start microphone"
+            isRunning = false
+        }
+    }
+
+    private func startSystemAudioMode() async {
+        guard #available(macOS 13.0, *) else {
+            statusMessage = "System audio requires macOS 13"
+            return
+        }
+
+        let systemAudio = SystemAudioInputSource()
+        self.systemAudio = systemAudio
+
+        do {
+            statusMessage = "Starting system audio"
+            try await systemAudio.start()
+            isRunning = true
+            statusMessage = "Listening to system audio"
+
+            bindTranscriptStream(
+                recognizer.transcribe(
+                    sessionID: sessionID,
+                    source: .systemAudio,
+                    audioStream: systemAudio.audioStream
+                )
+            )
+        } catch {
+            statusMessage = "Failed to start system audio"
             isRunning = false
         }
     }
@@ -66,15 +105,44 @@ final class LiveCaptionRuntime: ObservableObject {
 
         await microphone?.stop()
         microphone = nil
+
+        if #available(macOS 13.0, *) {
+            await systemAudio?.stop()
+            systemAudio = nil
+        }
+
         isRunning = false
         statusMessage = "Stopped"
     }
 
+    private func bindTranscriptStream(
+        _ stream: AsyncStream<TranscriptSegment>
+    ) {
+        Task { [weak self] in
+            for await segment in stream {
+                await self?.append(segment: segment)
+            }
+        }
+    }
+
     private func append(segment: TranscriptSegment) {
+        let speaker: String
+
+        switch segment.source {
+        case .microphone:
+            speaker = "Microphone"
+
+        case .systemAudio:
+            speaker = "System Audio"
+
+        case .mixed:
+            speaker = "Mixed"
+        }
+
         let line = CaptionLine(
             original: segment.text,
             translated: segment.translatedText ?? "",
-            speaker: segment.speakerID ?? "Microphone"
+            speaker: speaker
         )
 
         lines.append(line)
